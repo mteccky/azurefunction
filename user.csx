@@ -7,15 +7,22 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
 
-public static async Task<IActionResult> Run(HttpRequest req, ILogger log)
+public static async Task<HttpResponseMessage> Run(HttpRequest req, ILogger log)
 {
    log.LogInformation("User - HTTP trigger function processed a request.");
 
     await new StreamReader(req.Body).ReadToEndAsync();
 
-    dynamic response = new JObject();
-    response.name = "test";
-    response.token = "1234-455662-22233333-3333";
+    dynamic responseObj = new JObject();
+    responseObj.name = "Mona Khimani";
+    responseObj.token = "1234-455662-22233333-3333";
+    
+    var response = new HttpResponseMessage()
+    {
+        Content = new StringContent(JsonConvert.SerializeObject(responseObj), System.Text.Encoding.UTF8, "application/json"),
+        StatusCode = HttpStatusCode.OK,
+    };
 
-    return new OkObjectResult(response.ToString());
+    return response;
+
 }
