@@ -3,6 +3,7 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs;
+//using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using System;
@@ -12,44 +13,44 @@ using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
 
-public static async Task<IActionResult> Run(HttpRequest req, ILogger log)
+public static async Task<HttpResponseMessage> Run(HttpRequest req, ILogger log)
 {    
-    try
+   
+    log.LogInformation("Sort HTTP trigger function processed a request.");
+
+    var sortedProducts = new List<Product>();
+
+    string sortOption = req.Query["sortOption"];
+
+    var productList = GetProductList(log).Result;
+
+    switch (sortOption.ToLower())
     {
-        log.LogInformation("Sort HTTP trigger function processed a request.");
-
-        var sortedProducts = new List<Product>();
-
-        string sortOption = req.Query["sortOption"];
-
-        var productList = GetProductList(log).Result;
-
-        switch (sortOption.ToLower())
-        {
-            case "low":
-                sortedProducts = productList.SortProductsByLow();
-                break;
-            case "high":
-                sortedProducts = productList.SortProductsByHigh();
-                break;
-            case "ascending":
-                sortedProducts = productList.SortProductsByAscending();
-                break;
-            case "descending":
-                sortedProducts = productList.SortProductsByDescending();
-                break;
-            case "recommended":
-                sortedProducts = await SortProductsByPopularity(productList, log);
-                break;
-        }
-
-        return new OkObjectResult(JsonConvert.SerializeObject(sortedProducts));
+        case "low":
+            sortedProducts = productList.SortProductsByLow();
+            break;
+        case "high":
+            sortedProducts = productList.SortProductsByHigh();
+            break;
+        case "ascending":
+            sortedProducts = productList.SortProductsByAscending();
+            break;
+        case "descending":
+            sortedProducts = productList.SortProductsByDescending();
+            break;
+        case "recommended":
+            sortedProducts = await SortProductsByPopularity(productList, log);
+            break;
     }
-    catch (Exception ex)
+
+    var response = new HttpResponseMessage()
     {
-        log.LogError(ex.Message);
-        return new BadRequestResult();
-    }
+        Content = new StringContent(JsonConvert.SerializeObject(sortedProducts), System.Text.Encoding.UTF8, "application/json"),
+        StatusCode = HttpStatusCode.OK,
+    };
+
+    return response;
+
 } 
 
 static async Task<List<Product>> SortProductsByPopularity(ProductList productList, ILogger log)
@@ -76,8 +77,7 @@ static async Task<ProductList> GetProductList(ILogger log)
 public static async Task<string> GetProductsAsync()
 {
     using (var client = new HttpClient())
-    {
-        //var url = $"{_resourceApiBaseUrl}products?token={_resourceApiToken}";
+    {        
         var url = $"{Environment.GetEnvironmentVariable("ResourceApiBaseUrl")}products?token={Environment.GetEnvironmentVariable("ResourceApiToken")}";
         var httpResponse = await client.GetAsync(url);
         if (httpResponse.StatusCode == HttpStatusCode.OK)
@@ -91,8 +91,7 @@ public static async Task<string> GetProductsAsync()
 public static async Task<string> GetShopperHistory(ProductList productList)
 {
     using (var client = new HttpClient())
-    {
-        //var url = $"{_resourceApiBaseUrl}shopperHistory?token={_resourceApiToken}";
+    {        
         var url = $"{Environment.GetEnvironmentVariable("ResourceApiBaseUrl")}shopperHistory?token={Environment.GetEnvironmentVariable("ResourceApiToken")}";
         var httpResponse = await client.GetAsync(url);
         if (httpResponse.StatusCode == HttpStatusCode.OK)
